@@ -36,3 +36,12 @@ pnpm-debug.log*
 
 # Test
 coverage/
+playwright-report/
+test-results/
+
+# Screenshots (root level)
+/*.png
+
+# Internal tracking
+DONE.md
+TODO.md
