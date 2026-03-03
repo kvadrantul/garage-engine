@@ -1,5 +1,6 @@
 // Node Palette - Sidebar with draggable nodes
 
+import { useQuery } from '@tanstack/react-query';
 import {
   Webhook,
   Clock,
@@ -12,15 +13,19 @@ import {
   UserCheck,
   Settings,
 } from 'lucide-react';
+import { customNodesApi } from '@/api/client';
+import { resolveIcon } from '@/components/nodes/icon-resolver';
 
 interface NodeDefinition {
   type: string;
   name: string;
   icon: React.ReactNode;
   category: string;
+  customIcon?: string;
+  customColor?: string;
 }
 
-const nodeDefinitions: NodeDefinition[] = [
+const staticNodeDefinitions: NodeDefinition[] = [
   // Triggers
   { type: 'webhook-trigger', name: 'Webhook', icon: <Webhook size={16} />, category: 'Triggers' },
   { type: 'schedule-trigger', name: 'Schedule', icon: <Clock size={16} />, category: 'Triggers' },
@@ -43,11 +48,48 @@ const nodeDefinitions: NodeDefinition[] = [
   { type: 'set', name: 'Set', icon: <Settings size={16} />, category: 'Utility' },
 ];
 
-const categories = ['Triggers', 'Actions', 'Logic', 'AI', 'Utility'];
+const categoryDisplayMap: Record<string, string> = {
+  triggers: 'Triggers',
+  actions: 'Actions',
+  logic: 'Logic',
+  ai: 'AI',
+  utility: 'Utility',
+  custom: 'Custom',
+};
+
+const categories = ['Triggers', 'Actions', 'Logic', 'AI', 'Utility', 'Custom'];
 
 export function NodePalette() {
-  const onDragStart = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
+  const { data: customNodesData } = useQuery({
+    queryKey: ['custom-nodes'],
+    queryFn: () => customNodesApi.list(),
+    staleTime: 30000,
+  });
+
+  const customNodes: NodeDefinition[] = (customNodesData?.data || [])
+    .filter((n: any) => n.enabled !== false)
+    .map((n: any) => {
+      const IconComponent = resolveIcon(n.icon);
+      return {
+        type: n.id,
+        name: n.name,
+        icon: <IconComponent size={16} />,
+        category: categoryDisplayMap[n.category] || 'Custom',
+        customIcon: n.icon,
+        customColor: n.color,
+      };
+    });
+
+  const allNodes = [...staticNodeDefinitions, ...customNodes];
+
+  const onDragStart = (event: React.DragEvent, node: NodeDefinition) => {
+    event.dataTransfer.setData('application/reactflow', node.type);
+    if (node.customIcon) {
+      event.dataTransfer.setData('application/customicon', node.customIcon);
+    }
+    if (node.customColor) {
+      event.dataTransfer.setData('application/customcolor', node.customColor);
+    }
     event.dataTransfer.effectAllowed = 'move';
   };
 
@@ -56,7 +98,7 @@ export function NodePalette() {
       <h2 className="font-semibold text-foreground mb-4">Nodes</h2>
 
       {categories.map((category) => {
-        const categoryNodes = nodeDefinitions.filter((n) => n.category === category);
+        const categoryNodes = allNodes.filter((n) => n.category === category);
         if (categoryNodes.length === 0) return null;
 
         return (
@@ -68,7 +110,7 @@ export function NodePalette() {
                   key={node.type}
                   className="flex items-center gap-2 p-2 bg-muted rounded cursor-grab hover:bg-accent transition-colors"
                   draggable
-                  onDragStart={(e) => onDragStart(e, node.type)}
+                  onDragStart={(e) => onDragStart(e, node)}
                 >
                   <span className="text-muted-foreground">{node.icon}</span>
                   <span className="text-sm text-foreground">{node.name}</span>

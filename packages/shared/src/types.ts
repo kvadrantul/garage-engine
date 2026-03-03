@@ -6,6 +6,7 @@ export interface WorkflowDefinition {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   viewport?: { x: number; y: number; zoom: number };
+  settings?: WorkflowSettings & { variables?: Record<string, unknown> };
 }
 
 export interface WorkflowNode {
@@ -27,7 +28,8 @@ export type NodeType =
   | 'split'
   | 'set'
   | 'agent'
-  | 'hitl';
+  | 'hitl'
+  | (string & {}); // allow custom node type strings
 
 export interface NodeData {
   name?: string;
@@ -274,4 +276,22 @@ export interface PropertyDefinition {
     show?: Record<string, unknown[]>;
     hide?: Record<string, unknown[]>;
   };
+}
+
+// ============================================
+// CUSTOM NODE TYPES
+// ============================================
+
+export interface CustomNodeManifest {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  category: NodeCategory;
+  icon: string;
+  color: string;
+  inputs: PortDefinition[];
+  outputs: PortDefinition[];
+  properties: PropertyDefinition[];
+  code: string;
 }

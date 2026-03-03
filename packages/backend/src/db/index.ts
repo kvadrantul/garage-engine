@@ -96,6 +96,15 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_webhooks_path ON webhooks(path);
     CREATE INDEX IF NOT EXISTS idx_hitl_requests_execution_id ON hitl_requests(execution_id);
     CREATE INDEX IF NOT EXISTS idx_hitl_requests_status ON hitl_requests(status);
+
+    CREATE TABLE IF NOT EXISTS custom_nodes (
+      id TEXT PRIMARY KEY,
+      manifest TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      is_builtin INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    );
   `);
 
   console.log('Database initialized');

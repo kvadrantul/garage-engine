@@ -141,6 +141,18 @@ export const hitlRequestsRelations = relations(hitlRequests, ({ one }) => ({
 }));
 
 // ============================================
+// CUSTOM NODES
+// ============================================
+export const customNodes = sqliteTable('custom_nodes', {
+  id: text('id').primaryKey(),
+  manifest: text('manifest', { mode: 'json' }).$type<CustomNodeManifest>().notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  isBuiltin: integer('is_builtin', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
+// ============================================
 // TYPE IMPORTS (from types.ts)
 // ============================================
-import type { WorkflowDefinition, WorkflowSettings } from './types';
+import type { WorkflowDefinition, WorkflowSettings, CustomNodeManifest } from './types';

@@ -45,3 +45,7 @@ test-results/
 # Internal tracking
 DONE.md
 TODO.md
+
+# Test data files
+*.xls
+*.xlsx

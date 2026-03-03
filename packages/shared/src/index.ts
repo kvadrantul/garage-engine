@@ -9,4 +9,5 @@ export type {
   credentials,
   webhooks,
   hitlRequests,
+  customNodes,
 } from './schema';

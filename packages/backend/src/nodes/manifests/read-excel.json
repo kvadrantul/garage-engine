@@ -1,0 +1,38 @@
+{
+  "id": "read-excel",
+  "name": "Read Excel",
+  "description": "Read and parse an Excel (.xlsx) file from disk",
+  "version": "1.0.0",
+  "category": "actions",
+  "icon": "FileSpreadsheet",
+  "color": "green",
+  "inputs": [{ "name": "main", "type": "main" }],
+  "outputs": [{ "name": "main", "type": "main" }],
+  "properties": [
+    {
+      "name": "filePath",
+      "displayName": "File Path",
+      "type": "string",
+      "required": true,
+      "placeholder": "/path/to/file.xlsx",
+      "description": "Absolute path to the Excel file"
+    },
+    {
+      "name": "sheetName",
+      "displayName": "Sheet Name",
+      "type": "string",
+      "required": false,
+      "default": "",
+      "placeholder": "Sheet1",
+      "description": "Leave empty to use the first sheet"
+    },
+    {
+      "name": "hasHeader",
+      "displayName": "First Row is Header",
+      "type": "boolean",
+      "default": true,
+      "description": "Use first row values as column names"
+    }
+  ],
+  "code": "const XLSX = require('xlsx');\nconst workbook = XLSX.readFile(config.filePath);\nconst sheetName = config.sheetName && workbook.SheetNames.includes(config.sheetName)\n  ? config.sheetName\n  : workbook.SheetNames[0];\nconst rows = XLSX.utils.sheet_to_json(\n  workbook.Sheets[sheetName],\n  { header: config.hasHeader ? undefined : 1 }\n);\nreturn { rows, sheetName, totalRows: rows.length, availableSheets: workbook.SheetNames };"
+}

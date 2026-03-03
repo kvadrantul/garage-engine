@@ -24,3 +24,14 @@ export const nodeRegistry: Record<string, NodeRunner> = {
   'agent': agentNode,
   'hitl': hitlNode,
 };
+
+// Built-in node type IDs (cannot be used for custom nodes)
+export const BUILTIN_NODE_TYPES = new Set(Object.keys(nodeRegistry));
+
+export function registerNode(type: string, runner: NodeRunner) {
+  nodeRegistry[type] = runner;
+}
+
+export function unregisterNode(type: string) {
+  delete nodeRegistry[type];
+}

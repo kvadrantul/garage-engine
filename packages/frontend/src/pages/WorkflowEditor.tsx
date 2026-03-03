@@ -15,7 +15,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Save, Play, ArrowLeft, Moon, Sun, History } from 'lucide-react';
-import { workflowsApi } from '@/api/client';
+import { workflowsApi, executionsApi, customNodesApi } from '@/api/client';
 import { NodePalette } from '@/components/canvas/NodePalette';
 import { NDVPanel } from '@/components/panels/NDVPanel';
 import { HITLPanel } from '@/components/panels/HITLPanel';
@@ -66,10 +66,24 @@ export function WorkflowEditor() {
   const { theme, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
 
+  // Fetch custom nodes for dynamic type registration
+  const { data: customNodesData } = useQuery({
+    queryKey: ['custom-nodes'],
+    queryFn: () => customNodesApi.list(),
+    staleTime: 30000,
+  });
+
+  const customNodeTypes = (customNodesData?.data || [])
+    .filter((n: any) => n.enabled !== false)
+    .map((n: any) => n.id);
+
+  const allRegisteredTypes = [...allNodeTypes, ...customNodeTypes];
+
   // Register all node types to use the same custom component
   const nodeTypes = useMemo(
-    () => Object.fromEntries(allNodeTypes.map((t) => [t, WorkflowNode])),
-    [],
+    () => Object.fromEntries(allRegisteredTypes.map((t) => [t, WorkflowNode])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [customNodeTypes.join(',')],
   );
 
   // Register custom edge type with delete button
@@ -300,8 +314,16 @@ export function WorkflowEditor() {
     mutationFn: async () => {
       const definition = {
         nodes: nodes.map((n) => {
-          // Strip out onDelete callback before saving
-          const { onDelete, ...dataWithoutCallbacks } = n.data;
+          // Strip out callbacks and execution state before saving
+          const {
+            onDelete,
+            executionStatus,
+            executionOutput,
+            executionError,
+            executionDuration,
+            executionStartTime,
+            ...dataWithoutCallbacks
+          } = n.data;
           return {
             id: n.id,
             type: n.type,
@@ -337,9 +359,9 @@ export function WorkflowEditor() {
 
   // Execute workflow
   const executeMutation = useMutation({
-    mutationFn: () => workflowsApi.execute(id!),
-    onSuccess: (result: any) => {
-      // Clear previous execution status from nodes
+    mutationFn: () => {
+      // Reset node statuses BEFORE the API call to avoid race conditions
+      // with fast-completing workflows where WS events arrive before HTTP response
       setNodes((nds) =>
         nds.map((n) => ({
           ...n,
@@ -352,15 +374,74 @@ export function WorkflowEditor() {
           },
         })),
       );
-      // Reset edge styles
       setEdges((eds) =>
         eds.map((e) => ({ ...e, animated: false, style: undefined })),
       );
-      // Subscribe to execution events
+      return workflowsApi.execute(id!);
+    },
+    onSuccess: async (result: any) => {
       const execId = result.executionId;
       setExecutionId(execId);
       subscribe(execId);
       toast({ title: 'Workflow started', variant: 'default' });
+
+      // For fast workflows, execution may complete before WS subscription.
+      // Poll execution status to reconcile missed events (fallback only).
+      setTimeout(async () => {
+        try {
+          const exec = await executionsApi.get(execId);
+          if (exec.status === 'completed' || exec.status === 'failed') {
+            // Check if WS already handled this by looking at node states
+            // Only update if nodes are still pending (WS missed)
+            setNodes((currentNodes) => {
+              const allPending = currentNodes.every(
+                (n) => !n.data.executionStatus || n.data.executionStatus === 'pending'
+              );
+              if (!allPending) {
+                // WS already updated nodes, skip poll update
+                return currentNodes;
+              }
+              // WS missed events — load final node states from DB
+              if (exec.nodes) {
+                return currentNodes.map((n) => {
+                  const nodeExec = exec.nodes[n.id];
+                  if (!nodeExec) return n;
+                  return {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      executionStatus: nodeExec.status === 'error' ? 'error' : 'completed',
+                      executionOutput: nodeExec.output,
+                      executionError: nodeExec.error,
+                    },
+                  };
+                });
+              }
+              return currentNodes;
+            });
+            // Only clear execution state if still set (WS might have cleared it)
+            setExecutionId((currentId) => {
+              if (currentId === execId) {
+                // WS didn't clear it, so show toast and clear
+                setEdges((eds) => eds.map((e) => ({ ...e, animated: false })));
+                if (exec.status === 'completed') {
+                  toast({ title: 'Execution completed', variant: 'success' });
+                } else {
+                  toast({
+                    title: 'Execution failed',
+                    description: exec.error || 'Unknown error',
+                    variant: 'destructive',
+                  });
+                }
+                return null;
+              }
+              return currentId;
+            });
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }, 500);
     },
     onError: (error: Error) => {
       toast({ title: 'Failed to start', description: error.message, variant: 'destructive' });
@@ -417,6 +498,9 @@ export function WorkflowEditor() {
       const type = event.dataTransfer.getData('application/reactflow');
       if (!type) return;
 
+      const customIcon = event.dataTransfer.getData('application/customicon') || undefined;
+      const customColor = event.dataTransfer.getData('application/customcolor') || undefined;
+
       const position = {
         x: event.clientX - 250,
         y: event.clientY - 100,
@@ -426,7 +510,7 @@ export function WorkflowEditor() {
         id: `${type}_${Date.now()}`,
         type,
         position,
-        data: { name: type, config: {}, onDelete: deleteNode },
+        data: { name: type, config: {}, onDelete: deleteNode, customIcon, customColor },
       };
 
       setNodes((nds) => [...nds, newNode]);

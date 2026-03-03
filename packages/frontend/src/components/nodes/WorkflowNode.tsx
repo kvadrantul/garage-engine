@@ -14,6 +14,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { resolveIcon } from '@/components/nodes/icon-resolver';
 
 const iconMap: Record<string, LucideIcon> = {
   'webhook-trigger': Webhook,
@@ -43,6 +44,18 @@ const categoryColors: Record<string, { bg: string; border: string; icon: string 
   'hitl': { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-700', icon: 'text-amber-600 dark:text-amber-400' },
 };
 
+// Color presets for custom nodes (mapped from manifest "color" field)
+const customColorPresets: Record<string, { bg: string; border: string; icon: string }> = {
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-300 dark:border-blue-700', icon: 'text-blue-600 dark:text-blue-400' },
+  green: { bg: 'bg-green-50 dark:bg-green-950/40', border: 'border-green-300 dark:border-green-700', icon: 'text-green-600 dark:text-green-400' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', border: 'border-purple-300 dark:border-purple-700', icon: 'text-purple-600 dark:text-purple-400' },
+  orange: { bg: 'bg-orange-50 dark:bg-orange-950/40', border: 'border-orange-300 dark:border-orange-700', icon: 'text-orange-600 dark:text-orange-400' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-700', icon: 'text-amber-600 dark:text-amber-400' },
+  red: { bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-300 dark:border-red-700', icon: 'text-red-600 dark:text-red-400' },
+  pink: { bg: 'bg-pink-50 dark:bg-pink-950/40', border: 'border-pink-300 dark:border-pink-700', icon: 'text-pink-600 dark:text-pink-400' },
+  cyan: { bg: 'bg-cyan-50 dark:bg-cyan-950/40', border: 'border-cyan-300 dark:border-cyan-700', icon: 'text-cyan-600 dark:text-cyan-400' },
+};
+
 const statusStyles: Record<string, string> = {
   pending: '',
   running: 'ring-2 ring-blue-500 ring-offset-2 ring-offset-background shadow-lg shadow-blue-500/20',
@@ -63,8 +76,27 @@ const multiOutputTypes: Record<string, string[]> = {
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const Icon = iconMap[type || ''] || Settings;
-  const colors = categoryColors[type || ''] || categoryColors['set'];
+
+  // Resolve icon: built-in map first, then custom icon from node data
+  let Icon: LucideIcon;
+  if (iconMap[type || '']) {
+    Icon = iconMap[type || ''];
+  } else if (data?.customIcon) {
+    Icon = resolveIcon(data.customIcon as string);
+  } else {
+    Icon = Settings;
+  }
+
+  // Resolve colors: built-in map first, then custom color from node data
+  let colors: { bg: string; border: string; icon: string };
+  if (categoryColors[type || '']) {
+    colors = categoryColors[type || ''];
+  } else if (data?.customColor && customColorPresets[data.customColor as string]) {
+    colors = customColorPresets[data.customColor as string];
+  } else {
+    colors = categoryColors['set'];
+  }
+
   const status = data?.executionStatus as string | undefined;
   const error = data?.executionError as string | undefined;
   const duration = data?.executionDuration as number | undefined;

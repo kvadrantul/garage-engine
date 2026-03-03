@@ -9,9 +9,11 @@ import { workflowsRouter } from './api/workflows.js';
 import { executionsRouter } from './api/executions.js';
 import { hitlRouter } from './api/hitl.js';
 import { credentialsRouter } from './api/credentials.js';
+import { customNodesRouter } from './api/custom-nodes.js';
 import { webhookRouter } from './webhooks/webhook-handler.js';
 import { initExecutionService } from './services/execution-service.js';
 import { initScheduler } from './services/scheduler.js';
+import { loadCustomNodes } from './nodes/custom/custom-node-loader.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -65,6 +67,7 @@ app.use('/api/workflows', workflowsRouter);
 app.use('/api/executions', executionsRouter);
 app.use('/api/hitl', hitlRouter);
 app.use('/api/credentials', credentialsRouter);
+app.use('/api/custom-nodes', customNodesRouter);
 
 // Webhook Handler
 app.use('/webhooks', webhookRouter);
@@ -115,6 +118,9 @@ wss.on('connection', (ws) => {
 
 // Initialize database and start server
 initializeDatabase();
+
+// Load custom nodes from manifests + DB
+loadCustomNodes();
 
 // Initialize scheduler for cron jobs
 const scheduler = initScheduler();

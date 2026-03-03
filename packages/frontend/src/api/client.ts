@@ -108,3 +108,40 @@ export const credentialsApi = {
       method: 'DELETE',
     }),
 };
+
+// Custom Nodes API
+export const customNodesApi = {
+  list: () =>
+    request<{ data: any[] }>('/custom-nodes'),
+
+  get: (id: string) =>
+    request<any>(`/custom-nodes/${id}`),
+
+  create: (data: any) =>
+    request<any>('/custom-nodes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: any) =>
+    request<any>(`/custom-nodes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    request<void>(`/custom-nodes/${id}`, {
+      method: 'DELETE',
+    }),
+
+  toggle: (id: string) =>
+    request<{ id: string; enabled: boolean }>(`/custom-nodes/${id}/toggle`, {
+      method: 'POST',
+    }),
+
+  test: (id: string, data: { input: unknown; config: Record<string, unknown> }) =>
+    request<{ result: unknown }>(`/custom-nodes/${id}/test`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};

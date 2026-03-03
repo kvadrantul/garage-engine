@@ -5,6 +5,8 @@ import { ExecutionList } from './pages/ExecutionList';
 import { ExecutionDetail } from './pages/ExecutionDetail';
 import { HITLList } from './pages/HITLList';
 import { CredentialsList } from './pages/CredentialsList';
+import { CustomNodeList } from './pages/CustomNodeList';
+import { CustomNodeEditor } from './pages/CustomNodeEditor';
 
 function App() {
   return (
@@ -18,6 +20,9 @@ function App() {
         <Route path="/executions/:id" element={<ExecutionDetail />} />
         <Route path="/hitl" element={<HITLList />} />
         <Route path="/credentials" element={<CredentialsList />} />
+        <Route path="/custom-nodes" element={<CustomNodeList />} />
+        <Route path="/custom-nodes/new" element={<CustomNodeEditor />} />
+        <Route path="/custom-nodes/:id/edit" element={<CustomNodeEditor />} />
       </Routes>
     </div>
   );

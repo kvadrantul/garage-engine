@@ -6,6 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { Node } from 'reactflow';
 import { X, Settings, Play, ChevronDown, ChevronRight, Clock, CheckCircle, XCircle, Loader2, Trash2 } from 'lucide-react';
 import { credentialsApi } from '@/api/client';
+import { customNodesApi } from '@/api/client';
+import { DynamicPropertyForm } from '@/components/nodes/DynamicPropertyForm';
 
 interface NDVPanelProps {
   nodeId: string;
@@ -678,11 +680,40 @@ function NodeConfigForm({
         </>
       );
 
-    default:
+    default: {
+      // Try to render dynamic form for custom nodes
       return (
-        <div className="text-sm text-muted-foreground">
-          No additional configuration for this node type.
-        </div>
+        <CustomNodeConfigFallback type={type} config={config} onChange={onChange} />
       );
+    }
   }
+}
+
+// Dynamic form for custom nodes - fetches manifest and renders DynamicPropertyForm
+function CustomNodeConfigFallback({
+  type,
+  config,
+  onChange,
+}: {
+  type: string;
+  config: Record<string, any>;
+  onChange: (key: string, value: any) => void;
+}) {
+  const { data: customNodesData } = useQuery({
+    queryKey: ['custom-nodes'],
+    queryFn: () => customNodesApi.list(),
+    staleTime: 30000,
+  });
+
+  const manifest = (customNodesData?.data || []).find((n: any) => n.id === type);
+
+  if (!manifest || !manifest.properties || manifest.properties.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        No additional configuration for this node type.
+      </div>
+    );
+  }
+
+  return <DynamicPropertyForm properties={manifest.properties} config={config} onChange={onChange} />;
 }
